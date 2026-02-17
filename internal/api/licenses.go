@@ -23,7 +23,7 @@ func (c *Client) SearchLicenses(q string, page, size int) (*model.LicenseSearchR
 	}
 
 	var result model.LicenseSearchResult
-	if err := c.Get("/licenses/", query, &result); err != nil {
+	if err := c.Get("/licenses", query, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

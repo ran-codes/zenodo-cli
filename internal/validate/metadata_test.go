@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -14,7 +15,7 @@ func validMetadata() model.Metadata {
 		UploadType:      "dataset",
 		PublicationDate: "2024-01-01",
 		AccessRight:     "open",
-		License:         "cc-by-4.0",
+		License:         json.RawMessage(`"cc-by-4.0"`),
 		Creators:        []model.Creator{{Name: "Test Author"}},
 	}
 }
@@ -74,7 +75,7 @@ func TestCreatorMissingName(t *testing.T) {
 func TestMissingLicenseForOpen(t *testing.T) {
 	m := validMetadata()
 	m.AccessRight = "open"
-	m.License = ""
+	m.License = nil
 	errs := Metadata(m)
 	if !containsError(errs, "license is required") {
 		t.Errorf("expected license error, got: %v", errs)
@@ -84,7 +85,7 @@ func TestMissingLicenseForOpen(t *testing.T) {
 func TestMissingEmbargoDate(t *testing.T) {
 	m := validMetadata()
 	m.AccessRight = "embargoed"
-	m.License = "cc-by-4.0"
+	m.License = json.RawMessage(`"cc-by-4.0"`)
 	m.EmbargoDate = ""
 	errs := Metadata(m)
 	if !containsError(errs, "embargo_date") {
@@ -95,7 +96,7 @@ func TestMissingEmbargoDate(t *testing.T) {
 func TestMissingAccessConditions(t *testing.T) {
 	m := validMetadata()
 	m.AccessRight = "restricted"
-	m.License = ""
+	m.License = nil
 	m.AccessConditions = ""
 	errs := Metadata(m)
 	if !containsError(errs, "access_conditions") {
@@ -106,7 +107,7 @@ func TestMissingAccessConditions(t *testing.T) {
 func TestClosedAccessNoLicenseRequired(t *testing.T) {
 	m := validMetadata()
 	m.AccessRight = "closed"
-	m.License = ""
+	m.License = nil
 	errs := Metadata(m)
 	if containsError(errs, "license") {
 		t.Errorf("license should not be required for closed access, got: %v", errs)

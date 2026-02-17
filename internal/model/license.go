@@ -2,16 +2,28 @@ package model
 
 // License represents a Zenodo license.
 type License struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
+	ID    string            `json:"id"`
+	Title map[string]string `json:"title,omitempty"`
+	Props LicenseProps      `json:"props,omitempty"`
+	Tags  []string          `json:"tags,omitempty"`
+}
+
+// LicenseProps contains extra properties for a license.
+type LicenseProps struct {
 	URL         string `json:"url,omitempty"`
-	Family      string `json:"family,omitempty"`
-	Domain      string `json:"domain_content,omitempty"`
-	DomainData  string `json:"domain_data,omitempty"`
-	DomainSW    string `json:"domain_software,omitempty"`
-	Maintainer  string `json:"maintainer,omitempty"`
-	ODConformance string `json:"od_conformance,omitempty"`
-	OSIApproved bool   `json:"osi_approved,omitempty"`
+	Scheme      string `json:"scheme,omitempty"`
+	OSIApproved string `json:"osi_approved,omitempty"`
+}
+
+// TitleString returns the English title, falling back to the first available.
+func (l *License) TitleString() string {
+	if t, ok := l.Title["en"]; ok {
+		return t
+	}
+	for _, t := range l.Title {
+		return t
+	}
+	return ""
 }
 
 // LicenseSearchResult is the paginated response from licenses search.

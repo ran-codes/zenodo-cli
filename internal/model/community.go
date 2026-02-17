@@ -4,15 +4,20 @@ import "time"
 
 // Community represents a Zenodo community.
 type Community struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description,omitempty"`
-	PageURL     string    `json:"page,omitempty"`
+	ID       string            `json:"id"`
+	Slug     string            `json:"slug,omitempty"`
+	Metadata CommunityMetadata `json:"metadata,omitempty"`
+	Created  time.Time         `json:"created"`
+	Updated  time.Time         `json:"updated"`
+	Links    Links             `json:"links,omitempty"`
+}
+
+// CommunityMetadata contains the community's metadata fields.
+type CommunityMetadata struct {
+	Title          string `json:"title,omitempty"`
+	Description    string `json:"description,omitempty"`
 	CurationPolicy string `json:"curation_policy,omitempty"`
-	LogoURL     string    `json:"logo_url,omitempty"`
-	Created     time.Time `json:"created"`
-	Updated     time.Time `json:"updated"`
-	Links       Links     `json:"links,omitempty"`
+	Website        string `json:"website,omitempty"`
 }
 
 // CommunitySearchResult is the paginated response from communities search.

@@ -11,11 +11,14 @@ import (
 
 func TestListAccessLinks(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/records/123/access/links" {
+		if r.URL.Path != "/records/123/access/links" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		json.NewEncoder(w).Encode(model.AccessLinkList{
-			Hits: []model.AccessLink{{ID: "link-1"}},
+			Hits: model.AccessLinkHits{
+				Hits: []model.AccessLink{{ID: "link-1"}},
+				Total: 1,
+			},
 		})
 	}))
 	defer srv.Close()

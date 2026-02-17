@@ -12,5 +12,11 @@ type AccessLink struct {
 
 // AccessLinkList is the response from the access links endpoint.
 type AccessLinkList struct {
-	Hits []AccessLink `json:"hits"`
+	Hits AccessLinkHits `json:"hits"`
+}
+
+// AccessLinkHits contains access link results.
+type AccessLinkHits struct {
+	Hits  []AccessLink `json:"hits"`
+	Total int          `json:"total"`
 }

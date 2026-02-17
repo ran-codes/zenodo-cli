@@ -61,7 +61,7 @@ func Metadata(m model.Metadata) []string {
 		}
 
 		// License required for open/embargoed.
-		if (m.AccessRight == "open" || m.AccessRight == "embargoed") && m.License == "" {
+		if (m.AccessRight == "open" || m.AccessRight == "embargoed") && m.LicenseString() == "" {
 			errs = append(errs, "license is required when access_right is open or embargoed")
 		}
 

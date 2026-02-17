@@ -11,12 +11,12 @@ import (
 
 func TestSearchLicenses(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/licenses/" {
+		if r.URL.Path != "/licenses" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		json.NewEncoder(w).Encode(model.LicenseSearchResult{
 			Hits: model.LicenseHits{
-				Hits:  []model.License{{ID: "cc-by-4.0", Title: "Creative Commons Attribution 4.0"}},
+				Hits:  []model.License{{ID: "cc-by-4.0", Title: map[string]string{"en": "Creative Commons Attribution 4.0"}}},
 				Total: 1,
 			},
 		})
