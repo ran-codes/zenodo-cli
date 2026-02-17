@@ -15,12 +15,13 @@ import (
 
 // Client is an HTTP client for the Zenodo API.
 type Client struct {
-	baseURL    string
-	token      string
-	httpClient *http.Client
+	baseURL     string
+	token       string
+	httpClient  *http.Client
+	rateLimiter *RateLimiter
 }
 
-// NewClient creates a new API client.
+// NewClient creates a new API client with rate limiting.
 func NewClient(baseURL, token string) *Client {
 	return &Client{
 		baseURL: baseURL,
@@ -28,6 +29,7 @@ func NewClient(baseURL, token string) *Client {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		rateLimiter: NewRateLimiter(),
 	}
 }
 
@@ -84,11 +86,21 @@ func (c *Client) do(method, path string, query url.Values, body interface{}, res
 
 	slog.Debug("API request", "method", method, "url", reqURL)
 
+	// Rate limit before sending.
+	if c.rateLimiter != nil {
+		c.rateLimiter.Wait(path)
+	}
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
+
+	// Update rate limiter from response headers.
+	if c.rateLimiter != nil {
+		c.rateLimiter.UpdateFromHeaders(resp, path)
+	}
 
 	slog.Debug("API response", "status", resp.StatusCode)
 
@@ -162,11 +174,19 @@ func (c *Client) GetRaw(path string, accept string) ([]byte, error) {
 
 	slog.Debug("API request (raw)", "url", reqURL, "accept", accept)
 
+	if c.rateLimiter != nil {
+		c.rateLimiter.Wait(path)
+	}
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if c.rateLimiter != nil {
+		c.rateLimiter.UpdateFromHeaders(resp, path)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
