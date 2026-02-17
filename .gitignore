@@ -4,3 +4,4 @@
 /zenodo
 /zenodo.exe
 dist/
+.env
