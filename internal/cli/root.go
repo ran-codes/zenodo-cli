@@ -13,7 +13,17 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "zenodo",
 	Short: "CLI for the Zenodo REST API",
-	Long:  "A command-line tool for managing metadata, searching records, and querying assets on Zenodo.",
+	Long: `A command-line tool for managing metadata, searching records,
+and querying assets on Zenodo.
+
+Get started:
+  zenodo config set token <YOUR_TOKEN>   Set your API token
+  zenodo records list                    List your records
+  zenodo records search "query"          Search published records
+  zenodo records get <id>                Get record details
+
+Exit codes: 0=success, 1=API error, 2=auth error, 3=validation error,
+            4=rate limit, 5=user cancelled`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Set up logging.
 		verbose, _ := cmd.Flags().GetBool("verbose")
@@ -97,6 +107,9 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
+
 	rootCmd.PersistentFlags().String("token", "", "API token (prefer ZENODO_TOKEN env var or keyring)")
 	rootCmd.PersistentFlags().String("profile", "", "Config profile to use")
 	rootCmd.PersistentFlags().Bool("sandbox", false, "Use Zenodo sandbox environment")
@@ -107,5 +120,9 @@ func init() {
 
 // Execute runs the root command.
 func Execute() error {
-	return rootCmd.Execute()
+	err := rootCmd.Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+	}
+	return err
 }
