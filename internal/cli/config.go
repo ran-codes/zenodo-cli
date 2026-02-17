@@ -99,8 +99,82 @@ Examples:
 	},
 }
 
+var configProfilesCmd = &cobra.Command{
+	Use:   "profiles",
+	Short: "List configured profiles",
+	Long: `List all configured profiles and show which is the default.
+
+Examples:
+  zenodo config profiles`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+
+		defaultProfile := cfg.DefaultProfile()
+		names := cfg.ProfileNames()
+
+		if len(names) == 0 {
+			fmt.Fprintln(os.Stderr, "No profiles configured.")
+			return nil
+		}
+
+		for _, name := range names {
+			marker := "  "
+			if name == defaultProfile {
+				marker = "* "
+			}
+			baseURL := cfg.ProfileBaseURL(name)
+			fmt.Printf("%s%s (%s)\n", marker, name, baseURL)
+		}
+		return nil
+	},
+}
+
+var configUseCmd = &cobra.Command{
+	Use:   "use <profile>",
+	Short: "Switch the default profile",
+	Long: `Set a profile as the default.
+
+Examples:
+  zenodo config use sandbox
+  zenodo config use production`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name := args[0]
+
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+
+		// Verify profile exists.
+		found := false
+		for _, p := range cfg.ProfileNames() {
+			if p == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("profile %q not found; available profiles: %v", name, cfg.ProfileNames())
+		}
+
+		cfg.SetDefaultProfile(name)
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+
+		fmt.Fprintf(os.Stderr, "Default profile set to %q\n", name)
+		return nil
+	},
+}
+
 func init() {
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configGetCmd)
+	configCmd.AddCommand(configProfilesCmd)
+	configCmd.AddCommand(configUseCmd)
 	rootCmd.AddCommand(configCmd)
 }
