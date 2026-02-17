@@ -11,7 +11,7 @@ import (
 
 func TestSearchRecords(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/records/" {
+		if r.URL.Path != "/records" {
 			t.Errorf("path = %q, want /records/", r.URL.Path)
 		}
 		if r.URL.Query().Get("q") != "climate" {
@@ -63,8 +63,8 @@ func TestGetRecord(t *testing.T) {
 
 func TestListUserRecords(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/records" {
-			t.Errorf("path = %q, want /api/records", r.URL.Path)
+		if r.URL.Path != "/records" {
+			t.Errorf("path = %q, want /records", r.URL.Path)
 		}
 		if r.URL.Query().Get("status") != "draft" {
 			t.Errorf("status = %q, want draft", r.URL.Query().Get("status"))
@@ -90,7 +90,7 @@ func TestListUserRecords(t *testing.T) {
 
 func TestListVersions(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/records/100/versions" {
+		if r.URL.Path != "/records/100/versions" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		json.NewEncoder(w).Encode(model.RecordSearchResult{

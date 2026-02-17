@@ -23,7 +23,7 @@ func (c *Client) SearchCommunities(q string, page, size int) (*model.CommunitySe
 	}
 
 	var result model.CommunitySearchResult
-	if err := c.Get("/communities/", query, &result); err != nil {
+	if err := c.Get("/communities", query, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

@@ -12,7 +12,7 @@ import (
 func (c *Client) ListUserRecords(params RecordListParams) (*model.RecordSearchResult, error) {
 	query := params.toQuery()
 	var result model.RecordSearchResult
-	if err := c.Get("/api/records", query, &result); err != nil {
+	if err := c.Get("/records", query, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -25,7 +25,7 @@ func (c *Client) SearchRecords(q string, params RecordListParams) (*model.Record
 		query.Set("q", q)
 	}
 	var result model.RecordSearchResult
-	if err := c.Get("/records/", query, &result); err != nil {
+	if err := c.Get("/records", query, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -43,7 +43,7 @@ func (c *Client) GetRecord(id int) (*model.Record, error) {
 // ListVersions returns all versions of a record.
 func (c *Client) ListVersions(id int) (*model.RecordSearchResult, error) {
 	var result model.RecordSearchResult
-	if err := c.Get(fmt.Sprintf("/api/records/%d/versions", id), nil, &result); err != nil {
+	if err := c.Get(fmt.Sprintf("/records/%d/versions", id), nil, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

@@ -11,7 +11,7 @@ import (
 
 func TestSearchCommunities(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/communities/" {
+		if r.URL.Path != "/communities" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		if r.URL.Query().Get("q") != "open science" {
@@ -19,7 +19,7 @@ func TestSearchCommunities(t *testing.T) {
 		}
 		json.NewEncoder(w).Encode(model.CommunitySearchResult{
 			Hits: model.CommunityHits{
-				Hits:  []model.Community{{ID: "open-sci", Title: "Open Science"}},
+				Hits:  []model.Community{{ID: "open-sci", Metadata: model.CommunityMetadata{Title: "Open Science"}}},
 				Total: 1,
 			},
 		})

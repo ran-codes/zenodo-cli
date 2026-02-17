@@ -1,11 +1,14 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Record represents a Zenodo published record.
 type Record struct {
 	ID          int       `json:"id"`
-	ConceptID   int       `json:"conceptrecid,omitempty"`
+	ConceptID   string    `json:"conceptrecid,omitempty"`
 	DOI         string    `json:"doi,omitempty"`
 	ConceptDOI  string    `json:"conceptdoi,omitempty"`
 	Title       string    `json:"title,omitempty"`
@@ -22,7 +25,7 @@ type Record struct {
 // Deposition represents a Zenodo deposition (draft or published).
 type Deposition struct {
 	ID        int       `json:"id"`
-	ConceptID int       `json:"conceptrecid,omitempty"`
+	ConceptID string    `json:"conceptrecid,omitempty"`
 	DOI       string    `json:"doi,omitempty"`
 	DOIURL    string    `json:"doi_url,omitempty"`
 	Title     string    `json:"title,omitempty"`
@@ -43,7 +46,8 @@ type Metadata struct {
 	ImageType           string              `json:"image_type,omitempty"`
 	PublicationDate     string              `json:"publication_date,omitempty"`
 	AccessRight         string              `json:"access_right,omitempty"`
-	License             string              `json:"license,omitempty"`
+	License             json.RawMessage     `json:"license,omitempty"`
+	ResourceType        *ResourceType       `json:"resource_type,omitempty"`
 	EmbargoDate         string              `json:"embargo_date,omitempty"`
 	AccessConditions    string              `json:"access_conditions,omitempty"`
 	DOI                 string              `json:"doi,omitempty"`
@@ -116,7 +120,34 @@ type Grant struct {
 // PrereserveDOI holds a pre-reserved DOI.
 type PrereserveDOI struct {
 	DOI  string `json:"doi"`
-	ID   int    `json:"recid"`
+	ID   interface{} `json:"recid"`
+}
+
+// ResourceType represents the resource type from the API.
+type ResourceType struct {
+	Title string `json:"title,omitempty"`
+	Type  string `json:"type,omitempty"`
+}
+
+// LicenseString extracts a license identifier from the License field,
+// which may be a plain string or an object like {"id": "cc-by-4.0"}.
+func (m *Metadata) LicenseString() string {
+	if m.License == nil {
+		return ""
+	}
+	// Try plain string first.
+	var s string
+	if err := json.Unmarshal(m.License, &s); err == nil {
+		return s
+	}
+	// Try object with "id" field.
+	var obj struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(m.License, &obj); err == nil {
+		return obj.ID
+	}
+	return string(m.License)
 }
 
 // Subject represents a subject classification.
