@@ -18,7 +18,11 @@ var configSetCmd = &cobra.Command{
 	Short: "Set a configuration value",
 	Long: `Set a configuration value. Keys use dotted notation.
 
+When the key is "token", the value is stored in the OS keyring for the
+active profile. If the keyring is unavailable, it falls back to the config file.
+
 Examples:
+  zenodo config set token <your-api-token>
   zenodo config set default_profile sandbox
   zenodo config set profiles.production.base_url https://zenodo.org/api`,
 	Args: cobra.ExactArgs(2),
@@ -28,6 +32,33 @@ Examples:
 		cfg, err := config.Load()
 		if err != nil {
 			return err
+		}
+
+		// Special handling: store tokens in keyring.
+		if key == "token" {
+			profile, _ := cmd.Flags().GetString("profile")
+			profile = config.ResolveProfile(profile)
+			if profile == "" {
+				profile = cfg.DefaultProfile()
+			}
+
+			kr := config.NewKeyring()
+			if kr.Available() {
+				if err := kr.SetToken(profile, value); err != nil {
+					return fmt.Errorf("storing token in keyring: %w", err)
+				}
+				fmt.Fprintf(os.Stderr, "Token stored in OS keyring for profile %q\n", profile)
+				return nil
+			}
+
+			// Fallback: store in config file with warning.
+			fmt.Fprintf(os.Stderr, "Warning: OS keyring not available, storing token in config file\n")
+			cfg.SetProfileValue(profile, "token", value)
+			if err := cfg.Save(); err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stderr, "Token stored in config file for profile %q\n", profile)
+			return nil
 		}
 
 		cfg.Set(key, value)
