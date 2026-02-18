@@ -7,7 +7,7 @@
 
 - Code changes go on a feature branch, not directly on main.
 - Open a PR describing what changed and why.
-- Ask for review before merging. Only merge after explicit approval.
-- Include an ELI5 section in PR descriptions.
+  - Include an ELI5 section in PR descriptions.
+- Ask for review before merging and open the PR in chrome window. Only merge after explicit approval.
 - Run `go build ./...` and `go test ./...` before pushing.
 - See `.claude/reference/v0.1/DEVELOP.md` for project structure and build instructions.
