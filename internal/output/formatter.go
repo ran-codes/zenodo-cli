@@ -128,7 +128,27 @@ func stringify(v interface{}) string {
 	}
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
-	case reflect.Slice, reflect.Map:
+	case reflect.Slice:
+		// Flatten arrays of simple objects into comma-separated values.
+		// e.g. [{"identifier":"a"},{"identifier":"b"}] → "a, b"
+		if items, ok := v.([]interface{}); ok && len(items) > 0 {
+			var vals []string
+			for _, item := range items {
+				m, ok := item.(map[string]interface{})
+				if !ok || len(m) != 1 {
+					// Not a single-key object array; fall back to JSON.
+					b, _ := json.Marshal(v)
+					return string(b)
+				}
+				for _, val := range m {
+					vals = append(vals, fmt.Sprintf("%v", val))
+				}
+			}
+			return strings.Join(vals, ", ")
+		}
+		b, _ := json.Marshal(v)
+		return string(b)
+	case reflect.Map:
 		b, _ := json.Marshal(v)
 		return string(b)
 	default:
