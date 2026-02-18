@@ -63,18 +63,13 @@ func TestGetRecord(t *testing.T) {
 
 func TestListUserRecords(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/records" {
-			t.Errorf("path = %q, want /records", r.URL.Path)
+		if r.URL.Path != "/deposit/depositions" {
+			t.Errorf("path = %q, want /deposit/depositions", r.URL.Path)
 		}
 		if r.URL.Query().Get("status") != "draft" {
 			t.Errorf("status = %q, want draft", r.URL.Query().Get("status"))
 		}
-		json.NewEncoder(w).Encode(model.RecordSearchResult{
-			Hits: model.RecordHits{
-				Hits:  []model.Record{{ID: 1}},
-				Total: 1,
-			},
-		})
+		json.NewEncoder(w).Encode([]model.Deposition{{ID: 1, Title: "Draft Record"}})
 	}))
 	defer srv.Close()
 
@@ -83,8 +78,11 @@ func TestListUserRecords(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListUserRecords() error: %v", err)
 	}
-	if result.Hits.Total != 1 {
-		t.Errorf("total = %d, want 1", result.Hits.Total)
+	if len(result) != 1 {
+		t.Errorf("count = %d, want 1", len(result))
+	}
+	if result[0].Title != "Draft Record" {
+		t.Errorf("title = %q, want Draft Record", result[0].Title)
 	}
 }
 

@@ -8,14 +8,15 @@ import (
 	"github.com/ran-codes/zenodo-cli/internal/model"
 )
 
-// ListUserRecords returns the authenticated user's records and drafts.
-func (c *Client) ListUserRecords(params RecordListParams) (*model.RecordSearchResult, error) {
+// ListUserRecords returns the authenticated user's records and drafts
+// via the /deposit/depositions endpoint.
+func (c *Client) ListUserRecords(params RecordListParams) ([]model.Deposition, error) {
 	query := params.toQuery()
-	var result model.RecordSearchResult
-	if err := c.Get("/records", query, &result); err != nil {
+	var result []model.Deposition
+	if err := c.Get("/deposit/depositions", query, &result); err != nil {
 		return nil, err
 	}
-	return &result, nil
+	return result, nil
 }
 
 // SearchRecords searches published records with an Elasticsearch query.

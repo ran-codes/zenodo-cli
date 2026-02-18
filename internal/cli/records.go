@@ -36,24 +36,35 @@ Examples:
 			Community: community,
 		}
 
-		if all {
-			records, total, err := api.PaginateAll(func(page int) (*model.RecordSearchResult, error) {
-				params.Page = page
-				return client.ListUserRecords(params)
-			})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
-			}
-			fmt.Fprintf(os.Stderr, "Total: %d records\n", total)
-			return output.Format(os.Stdout, records, appCtx.Output, appCtx.Fields)
+		fields := appCtx.Fields
+		if fields == "" {
+			fields = "title,metadata.communities,doi_url,created"
 		}
 
-		result, err := client.ListUserRecords(params)
+		if all {
+			var allDepositions []model.Deposition
+			const pageSize = 100
+			for page := 1; ; page++ {
+				params.Page = page
+				deps, err := client.ListUserRecords(params)
+				if err != nil {
+					return err
+				}
+				allDepositions = append(allDepositions, deps...)
+				if len(deps) < pageSize {
+					break
+				}
+			}
+			fmt.Fprintf(os.Stderr, "Total: %d records\n", len(allDepositions))
+			return output.Format(os.Stdout, allDepositions, appCtx.Output, fields)
+		}
+
+		depositions, err := client.ListUserRecords(params)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stderr, "Showing %d of %d records\n", len(result.Hits.Hits), result.Hits.Total)
-		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, appCtx.Fields)
+		fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
+		return output.Format(os.Stdout, depositions, appCtx.Output, fields)
 	},
 }
 
@@ -77,6 +88,11 @@ Examples:
 			Community: community,
 		}
 
+		searchFields := appCtx.Fields
+		if searchFields == "" {
+			searchFields = "id,title,doi,links.html,created"
+		}
+
 		if all {
 			records, total, err := api.PaginateAll(func(page int) (*model.RecordSearchResult, error) {
 				params.Page = page
@@ -86,7 +102,7 @@ Examples:
 				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
 			}
 			fmt.Fprintf(os.Stderr, "Total: %d records\n", total)
-			return output.Format(os.Stdout, records, appCtx.Output, appCtx.Fields)
+			return output.Format(os.Stdout, records, appCtx.Output, searchFields)
 		}
 
 		result, err := client.SearchRecords(query, params)
@@ -94,7 +110,7 @@ Examples:
 			return err
 		}
 		fmt.Fprintf(os.Stderr, "Showing %d of %d records\n", len(result.Hits.Hits), result.Hits.Total)
-		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, appCtx.Fields)
+		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, searchFields)
 	},
 }
 
@@ -162,7 +178,11 @@ Examples:
 		if err != nil {
 			return err
 		}
-		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, appCtx.Fields)
+		fields := appCtx.Fields
+		if fields == "" {
+			fields = "id,title,doi,links.html,created"
+		}
+		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
 	},
 }
 

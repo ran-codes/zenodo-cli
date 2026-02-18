@@ -2,10 +2,12 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -28,6 +30,14 @@ func NewClient(baseURL, token string) *Client {
 		token:   token,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					// Prefer IPv4 to avoid timeouts on networks with broken IPv6.
+					d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+					return d.DialContext(ctx, "tcp4", addr)
+				},
+				ForceAttemptHTTP2: true,
+			},
 		},
 		rateLimiter: NewRateLimiter(),
 	}
