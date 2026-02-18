@@ -36,7 +36,11 @@ Examples:
 		if err != nil {
 			return err
 		}
-		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, appCtx.Fields)
+		fields := appCtx.Fields
+		if fields == "" {
+			fields = "metadata.title,links.self_html"
+		}
+		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
 	},
 }
 

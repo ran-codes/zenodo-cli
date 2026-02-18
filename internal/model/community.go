@@ -6,10 +6,17 @@ import "time"
 type Community struct {
 	ID       string            `json:"id"`
 	Slug     string            `json:"slug,omitempty"`
+	URL      string            `json:"url,omitempty"`
 	Metadata CommunityMetadata `json:"metadata,omitempty"`
 	Created  time.Time         `json:"created"`
 	Updated  time.Time         `json:"updated"`
-	Links    Links             `json:"links,omitempty"`
+	Links    CommunityLinks    `json:"links,omitempty"`
+}
+
+// CommunityLinks contains links returned by the communities API.
+type CommunityLinks struct {
+	Self     string `json:"self,omitempty"`
+	SelfHTML string `json:"self_html,omitempty"`
 }
 
 // CommunityMetadata contains the community's metadata fields.
