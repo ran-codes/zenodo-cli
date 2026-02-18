@@ -7,6 +7,28 @@ import (
 	"github.com/ran-codes/zenodo-cli/internal/model"
 )
 
+// ListUserCommunities returns the authenticated user's communities.
+func (c *Client) ListUserCommunities(q string, page, size int) (*model.CommunitySearchResult, error) {
+	query := url.Values{}
+	if q != "" {
+		query.Set("q", q)
+	}
+	if page > 0 {
+		query.Set("page", strconv.Itoa(page))
+	}
+	if size > 0 {
+		query.Set("size", strconv.Itoa(size))
+	} else {
+		query.Set("size", "100")
+	}
+
+	var result model.CommunitySearchResult
+	if err := c.Get("/user/communities", query, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // SearchCommunities searches or lists communities.
 func (c *Client) SearchCommunities(q string, page, size int) (*model.CommunitySearchResult, error) {
 	query := url.Values{}
