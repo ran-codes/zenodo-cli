@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -21,44 +22,85 @@ var recordsListCmd = &cobra.Command{
 	Short: "List your records and drafts",
 	Long: `List the authenticated user's records and drafts.
 
+Without --community, lists your own records.
+With --community (no value), aggregates records across your communities.
+With --community=<slug>, lists all records in that community.
+
 Examples:
   zenodo records list
   zenodo records list --status draft
-  zenodo records list --community my-org --all`,
+  zenodo records list --community
+  zenodo records list --community=my-org`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := api.NewClient(appCtx.BaseURL, appCtx.Token)
 		status, _ := cmd.Flags().GetString("status")
 		community, _ := cmd.Flags().GetString("community")
-		all, _ := cmd.Flags().GetBool("all")
-
-		params := api.RecordListParams{
-			Status:    status,
-			Community: community,
-		}
+		communityUsed := cmd.Flags().Changed("community")
 
 		fields := appCtx.Fields
-		if fields == "" {
-			fields = "title,metadata.communities,doi_url,created"
+
+		// --community=<slug>: all records in that community
+		if communityUsed && community != "" && community != "*" {
+			if fields == "" {
+				fields = "community,title,doi,created"
+			}
+			params := api.RecordListParams{
+				Status:    status,
+				Community: community,
+			}
+			result, err := client.SearchRecords("", params)
+			if err != nil {
+				return err
+			}
+			rows, err := injectCommunity(result.Hits.Hits, community)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stderr, "Showing %d of %d records in %s\n", len(result.Hits.Hits), result.Hits.Total, community)
+			return output.Format(os.Stdout, rows, appCtx.Output, fields)
 		}
 
-		if all {
-			var allDepositions []model.Deposition
-			const pageSize = 100
-			for page := 1; ; page++ {
-				params.Page = page
-				deps, err := client.ListUserRecords(params)
+		// --community (no value): aggregate across user's communities
+		if communityUsed && (community == "" || community == "*") {
+			if fields == "" {
+				fields = "community,title,doi,created"
+			}
+			communities, err := client.ListUserCommunities("", 0, 0)
+			if err != nil {
+				return err
+			}
+			if len(communities.Hits.Hits) == 0 {
+				fmt.Fprintln(os.Stderr, "No communities found")
+				return nil
+			}
+			var allRows []map[string]interface{}
+			for _, c := range communities.Hits.Hits {
+				params := api.RecordListParams{
+					Status:    status,
+					Community: c.Slug,
+				}
+				result, err := client.SearchRecords("", params)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: could not fetch records for %s: %v\n", c.Slug, err)
+					continue
+				}
+				rows, err := injectCommunity(result.Hits.Hits, c.Slug)
 				if err != nil {
 					return err
 				}
-				allDepositions = append(allDepositions, deps...)
-				if len(deps) < pageSize {
-					break
-				}
+				allRows = append(allRows, rows...)
 			}
-			fmt.Fprintf(os.Stderr, "Total: %d records\n", len(allDepositions))
-			return output.Format(os.Stdout, allDepositions, appCtx.Output, fields)
+			fmt.Fprintf(os.Stderr, "Total: %d records across %d communities\n", len(allRows), len(communities.Hits.Hits))
+			return output.Format(os.Stdout, allRows, appCtx.Output, fields)
 		}
 
+		// Default: user's own records
+		if fields == "" {
+			fields = "title,metadata.communities,doi_url,created"
+		}
+		params := api.RecordListParams{
+			Status:    status,
+		}
 		depositions, err := client.ListUserRecords(params)
 		if err != nil {
 			return err
@@ -66,6 +108,22 @@ Examples:
 		fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
 		return output.Format(os.Stdout, depositions, appCtx.Output, fields)
 	},
+}
+
+// injectCommunity converts records to maps and adds a top-level "community" field.
+func injectCommunity(data interface{}, slug string) ([]map[string]interface{}, error) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	var rows []map[string]interface{}
+	if err := json.Unmarshal(b, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		row["community"] = slug
+	}
+	return rows, nil
 }
 
 var recordsSearchCmd = &cobra.Command{
@@ -189,8 +247,8 @@ Examples:
 func init() {
 	// records list flags
 	recordsListCmd.Flags().String("status", "", "Filter by status: draft, published")
-	recordsListCmd.Flags().String("community", "", "Filter by community ID")
-	recordsListCmd.Flags().Bool("all", false, "Fetch all pages (up to 10k results)")
+	recordsListCmd.Flags().String("community", "", "Community slug (omit value to aggregate across your communities)")
+	recordsListCmd.Flags().Lookup("community").NoOptDefVal = "*"
 
 	// records search flags
 	recordsSearchCmd.Flags().String("community", "", "Filter by community ID")
