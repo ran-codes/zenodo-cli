@@ -15,6 +15,10 @@ func (c *Client) GetDeposition(id int) (*model.Deposition, error) {
 	return &result, nil
 }
 
+// v0.1: Write methods disabled — read-only release.
+// They will be re-enabled in a future version.
+
+/*
 // UpdateDeposition updates the metadata of a deposition (full replacement PUT).
 func (c *Client) UpdateDeposition(id int, metadata model.Metadata) (*model.Deposition, error) {
 	body := map[string]interface{}{
@@ -53,3 +57,4 @@ func (c *Client) DiscardDeposition(id int) (*model.Deposition, error) {
 	}
 	return &result, nil
 }
+*/

@@ -1,5 +1,10 @@
 package cli
 
+// v0.1: Deposit write commands disabled — read-only release.
+// All deposit subcommands (edit, update, discard, publish) are write operations.
+// They will be re-enabled in a future version.
+
+/*
 import (
 	"bufio"
 	"encoding/json"
@@ -292,3 +297,4 @@ func confirm(prompt string) bool {
 	answer = strings.TrimSpace(strings.ToLower(answer))
 	return answer == "y" || answer == "yes"
 }
+*/
