@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,6 +31,9 @@ func TestGetDeposition(t *testing.T) {
 	}
 }
 
+// v0.1: Write method tests disabled — read-only release.
+
+/*
 func TestUpdateDeposition(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut || r.URL.Path != "/deposit/depositions/100" {
@@ -116,3 +118,4 @@ func TestDiscardDeposition(t *testing.T) {
 		t.Errorf("id = %d", dep.ID)
 	}
 }
+*/
