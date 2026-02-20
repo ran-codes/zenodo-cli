@@ -108,6 +108,45 @@ zenodo config profiles
 3. Give it a name and select the scopes you need (`deposit:write`, `deposit:actions` for future write features)
 4. Copy the token and store it: `zenodo config set token <token>`
 
+## MCP Server (Claude Code integration)
+
+`zenodo-mcp` is a second binary that exposes Zenodo tools via the [Model Context Protocol](https://modelcontextprotocol.io/), letting Claude Code interact with Zenodo directly.
+
+### Setup
+
+After installing, add to your Claude Code MCP config (`.mcp.json` in your project root or `~/.claude.json`):
+
+```json
+{
+  "mcpServers": {
+    "zenodo": {
+      "command": "zenodo-mcp"
+    }
+  }
+}
+```
+
+The MCP server uses the same config and token as the CLI. Make sure you've already run `zenodo config set token <token>`.
+
+### Available tools
+
+| Tool | Description |
+|------|-------------|
+| `records_list` | List your own records and drafts |
+| `records_search` | Search published records |
+| `records_get` | Get a single record by ID |
+| `records_versions` | List all versions of a record |
+| `communities_list` | List your communities |
+| `licenses_search` | Search available licenses |
+
+### Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `ZENODO_TOKEN` | API token (overrides keyring/config) |
+| `ZENODO_PROFILE` | Config profile to use |
+| `ZENODO_SANDBOX` | Set to `true` to use sandbox |
+
 ## Dependencies
 
 | Package | Used for |

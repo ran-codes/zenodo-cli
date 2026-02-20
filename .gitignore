@@ -3,7 +3,11 @@
 # Build output
 /zenodo
 /zenodo.exe
+/zenodo-mcp
+/zenodo-mcp.exe
+*.exe~
 dist/
 .env
 .claude/mcp.json
+.mcp.json
 /.claude/worktrees
