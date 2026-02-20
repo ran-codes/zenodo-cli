@@ -51,7 +51,7 @@ Examples:
 				return fmt.Errorf("ORCID not configured. Run: zenodo config set orcid <your-orcid>")
 			}
 			if fields == "" {
-				fields = "title,community,doi,stats.version_views,stats.version_downloads,created"
+				fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
 			}
 			query := fmt.Sprintf("creators.orcid:%s", orcid)
 			params := api.RecordListParams{
@@ -68,7 +68,7 @@ Examples:
 		// --community=<slug>: all records in that community
 		if communityUsed && community != "" && community != "*" {
 			if fields == "" {
-				fields = "community,title,doi,stats.version_views,stats.version_downloads,created"
+				fields = "community,title,links.doi,stats.version_views,stats.version_downloads,created"
 			}
 			params := api.RecordListParams{
 				Status:    status,
@@ -89,7 +89,7 @@ Examples:
 		// --community (no value): aggregate across user's communities
 		if communityUsed && (community == "" || community == "*") {
 			if fields == "" {
-				fields = "community,title,doi,stats.version_views,stats.version_downloads,created"
+				fields = "community,title,links.doi,stats.version_views,stats.version_downloads,created"
 			}
 			communities, err := client.ListUserCommunities("", 0, 0)
 			if err != nil {
@@ -126,7 +126,7 @@ Examples:
 
 		if hasOrcid {
 			if fields == "" {
-				fields = "title,community,doi,stats.version_views,stats.version_downloads,created"
+				fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
 			}
 			query := fmt.Sprintf("creators.orcid:%s", orcid)
 			params := api.RecordListParams{}
@@ -141,7 +141,7 @@ Examples:
 
 		// No ORCID: fall back to self-uploaded records
 		if fields == "" {
-			fields = "title,community,doi,created"
+			fields = "title,community,links.doi,created"
 		}
 		params := api.RecordListParams{
 			Status: status,
@@ -231,7 +231,7 @@ Examples:
 
 		searchFields := appCtx.Fields
 		if searchFields == "" {
-			searchFields = "id,title,doi,stats.version_views,stats.version_downloads,created"
+			searchFields = "id,title,links.doi,stats.version_views,stats.version_downloads,created"
 		}
 
 		if all {
@@ -321,7 +321,7 @@ Examples:
 		}
 		fields := appCtx.Fields
 		if fields == "" {
-			fields = "id,title,doi,stats.version_views,stats.version_downloads,created"
+			fields = "id,title,links.doi,stats.version_views,stats.version_downloads,created"
 		}
 		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
 	},
