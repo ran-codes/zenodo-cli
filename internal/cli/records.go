@@ -120,22 +120,41 @@ Examples:
 			return output.Format(os.Stdout, allRows, appCtx.Output, fields)
 		}
 
-		// Default: user's own records
+		// Default: if ORCID is configured, search by ORCID; otherwise list uploads
+		orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
+		hasOrcid := orcid != "" && orcid != "<nil>"
+
+		if hasOrcid {
+			if fields == "" {
+				fields = "title,community,doi,stats.version_views,stats.version_downloads,created"
+			}
+			query := fmt.Sprintf("creators.orcid:%s", orcid)
+			params := api.RecordListParams{}
+			result, err := client.SearchRecords(query, params)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stderr, "Listing records for ORCID %s\n", orcid)
+			fmt.Fprintf(os.Stderr, "Showing %d of %d authored records\n", len(result.Hits.Hits), result.Hits.Total)
+			return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
+		}
+
+		// No ORCID: fall back to self-uploaded records
 		if fields == "" {
 			fields = "title,community,doi,created"
 		}
 		params := api.RecordListParams{
-			Status:    status,
+			Status: status,
 		}
 		depositions, err := client.ListUserRecords(params)
 		if err != nil {
 			return err
 		}
-		// Normalize community field: extract identifiers from metadata.communities
 		rows, err := normalizeCommunities(depositions)
 		if err != nil {
 			return err
 		}
+		fmt.Fprintf(os.Stderr, "Listing self-uploaded records (to list authored records: zenodo config set orcid <your-orcid>)\n")
 		fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
 		return output.Format(os.Stdout, rows, appCtx.Output, fields)
 	},
