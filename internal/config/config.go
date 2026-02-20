@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -19,7 +20,8 @@ const (
 
 // Config holds the application configuration backed by viper.
 type Config struct {
-	v *viper.Viper
+	v          *viper.Viper
+	deletedKeys []string
 }
 
 // Load reads the config file and returns a Config instance.
@@ -56,13 +58,34 @@ func (c *Config) Save() error {
 
 	configPath := GetConfigFilePath()
 
-	if err := c.v.WriteConfigAs(configPath); err != nil {
-		return fmt.Errorf("writing config: %w", err)
+	// Apply pending deletes before writing.
+	if len(c.deletedKeys) > 0 {
+		settings := c.v.AllSettings()
+		for _, key := range c.deletedKeys {
+			parts := strings.Split(key, ".")
+			deleteNestedKey(settings, parts)
+		}
+		c.deletedKeys = nil
+		// Write cleaned settings directly via a fresh viper instance.
+		fresh := viper.New()
+		fresh.SetConfigType("yaml")
+		if err := fresh.MergeConfigMap(settings); err != nil {
+			return fmt.Errorf("applying deletes: %w", err)
+		}
+		if err := fresh.WriteConfigAs(configPath); err != nil {
+			return fmt.Errorf("writing config: %w", err)
+		}
+	} else {
+		if err := c.v.WriteConfigAs(configPath); err != nil {
+			return fmt.Errorf("writing config: %w", err)
+		}
 	}
 
-	// Enforce 0600 permissions.
-	if err := os.Chmod(configPath, configFilePermissions); err != nil {
-		return fmt.Errorf("setting config permissions: %w", err)
+	// Enforce 0600 permissions (no-op on Windows).
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(configPath, configFilePermissions); err != nil {
+			return fmt.Errorf("setting config permissions: %w", err)
+		}
 	}
 
 	return nil
@@ -129,6 +152,33 @@ func (c *Config) Set(key string, value interface{}) {
 	c.v.Set(key, value)
 }
 
+// Delete removes a key from the configuration.
+// Viper doesn't support deleting keys natively, so we track them
+// and remove them from the settings map during Save.
+func (c *Config) Delete(key string) {
+	c.deletedKeys = append(c.deletedKeys, strings.ToLower(key))
+}
+
+// deleteNestedKey removes a key from a nested map given a dotted key path split into parts.
+func deleteNestedKey(m map[string]interface{}, parts []string) {
+	if len(parts) == 0 {
+		return
+	}
+	if len(parts) == 1 {
+		delete(m, parts[0])
+		return
+	}
+	next, ok := m[parts[0]]
+	if !ok {
+		return
+	}
+	nextMap, ok := next.(map[string]interface{})
+	if !ok {
+		return
+	}
+	deleteNestedKey(nextMap, parts[1:])
+}
+
 func profileKey(profile, key string) string {
 	return strings.Join([]string{"profiles", profile, key}, ".")
 }
@@ -167,7 +217,11 @@ func MaskToken(token string) string {
 }
 
 // CheckConfigPermissions warns if the config file has overly broad permissions.
+// Skipped on Windows where Unix-style file permissions don't apply.
 func CheckConfigPermissions() error {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
 	path := GetConfigFilePath()
 	info, err := os.Stat(path)
 	if err != nil {

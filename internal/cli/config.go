@@ -99,6 +99,118 @@ Examples:
 	},
 }
 
+var configDeleteCmd = &cobra.Command{
+	Use:   "delete <key>",
+	Short: "Delete a configuration value",
+	Long: `Delete a configuration value. Keys use dotted notation.
+
+When the key is "token", the value is removed from both the OS keyring
+and the config file for the active profile.
+
+Examples:
+  zenodo config delete orcid
+  zenodo config delete token`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		key := args[0]
+
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+
+		// Special handling: remove token from keyring and config.
+		if key == "token" {
+			profile, _ := cmd.Flags().GetString("profile")
+			profile = config.ResolveProfile(profile)
+			if profile == "" {
+				profile = cfg.DefaultProfile()
+			}
+
+			kr := config.NewKeyring()
+			if kr.Available() {
+				if err := kr.DeleteToken(profile); err != nil {
+					return fmt.Errorf("removing token from keyring: %w", err)
+				}
+			}
+
+			// Also remove from config file in case it was stored there.
+			cfg.SetProfileValue(profile, "token", "")
+			cfg.Delete("profiles." + profile + ".token")
+			if err := cfg.Save(); err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stderr, "Token deleted for profile %q\n", profile)
+			return nil
+		}
+
+		if cfg.Get(key) == nil {
+			return fmt.Errorf("key %q not found", key)
+		}
+
+		cfg.Delete(key)
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+
+		fmt.Fprintf(os.Stderr, "Deleted %s\n", key)
+		return nil
+	},
+}
+
+var configListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "Show all configuration values",
+	Long: `Show all known configuration keys and their current values.
+
+Sensitive values like tokens are masked. Unset keys show MISSING.
+
+Examples:
+  zenodo config list`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+
+		profile := appCtx.Profile
+
+		// Known config keys to display.
+		keys := []struct {
+			label string
+			value string
+		}{
+			{"profile", profile},
+			{"base_url", cfg.ResolveBaseURL(profile, false)},
+			{"token", formatToken(appCtx.Token)},
+			{"orcid", formatValue(cfg.Get("orcid"))},
+		}
+
+		for _, k := range keys {
+			fmt.Printf("%-12s %s\n", k.label+":", k.value)
+		}
+		return nil
+	},
+}
+
+func formatToken(token string) string {
+	if token == "" {
+		return "MISSING"
+	}
+	return config.MaskToken(token)
+}
+
+func formatValue(val interface{}) string {
+	if val == nil {
+		return "MISSING"
+	}
+	s := fmt.Sprintf("%v", val)
+	if s == "" {
+		return "MISSING"
+	}
+	return s
+}
+
 var configProfilesCmd = &cobra.Command{
 	Use:   "profiles",
 	Short: "List configured profiles",
@@ -174,6 +286,8 @@ Examples:
 func init() {
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configGetCmd)
+	configCmd.AddCommand(configDeleteCmd)
+	configCmd.AddCommand(configListCmd)
 	configCmd.AddCommand(configProfilesCmd)
 	configCmd.AddCommand(configUseCmd)
 	rootCmd.AddCommand(configCmd)
