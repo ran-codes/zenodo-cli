@@ -37,13 +37,25 @@ Examples:
 		status, _ := cmd.Flags().GetString("status")
 		community, _ := cmd.Flags().GetString("community")
 		communityUsed := cmd.Flags().Changed("community")
+		authored, _ := cmd.Flags().GetBool("authored")
+		uploaded, _ := cmd.Flags().GetBool("uploaded")
 
 		fields := appCtx.Fields
+
+		// --authored: search by ORCID (created or contributed)
+		if authored {
+			return listAuthored(client, cmd, status, community, fields)
+		}
+
+		// --uploaded: explicitly list self-uploaded records
+		if uploaded {
+			return listUploaded(client, status, fields)
+		}
 
 		// --community=<slug>: all records in that community
 		if communityUsed && community != "" && community != "*" {
 			if fields == "" {
-				fields = "community,title,doi,stats.version_views,stats.version_downloads,created"
+				fields = "community,title,links.doi,stats.version_views,stats.version_downloads,created"
 			}
 			params := api.RecordListParams{
 				Status:    status,
@@ -64,7 +76,7 @@ Examples:
 		// --community (no value): aggregate across user's communities
 		if communityUsed && (community == "" || community == "*") {
 			if fields == "" {
-				fields = "community,title,doi,stats.version_views,stats.version_downloads,created"
+				fields = "community,title,links.doi,stats.version_views,stats.version_downloads,created"
 			}
 			communities, err := client.ListUserCommunities("", 0, 0)
 			if err != nil {
@@ -95,25 +107,74 @@ Examples:
 			return output.Format(os.Stdout, allRows, appCtx.Output, fields)
 		}
 
-		// Default: user's own records
-		if fields == "" {
-			fields = "title,community,doi,created"
+		// Default: if ORCID is configured, search by ORCID; otherwise list uploads
+		orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
+		if orcid != "" && orcid != "<nil>" {
+			return listAuthored(client, cmd, "", "", fields)
 		}
-		params := api.RecordListParams{
-			Status:    status,
-		}
-		depositions, err := client.ListUserRecords(params)
-		if err != nil {
-			return err
-		}
-		// Normalize community field: extract identifiers from metadata.communities
-		rows, err := normalizeCommunities(depositions)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
-		return output.Format(os.Stdout, rows, appCtx.Output, fields)
+		return listUploaded(client, status, fields)
 	},
+}
+
+// listAuthored searches for records where the user's ORCID appears as creator or contributor.
+func listAuthored(client *api.Client, cmd *cobra.Command, status, community, fields string) error {
+	if status == "draft" {
+		return fmt.Errorf("--authored cannot be used with --status draft (drafts are not available via the search API)")
+	}
+	orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
+	if orcid == "" || orcid == "<nil>" {
+		return fmt.Errorf("ORCID not configured. Run: zenodo config set orcid <your-orcid>")
+	}
+	if fields == "" {
+		fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
+	}
+	query := orcidQuery(orcid)
+	params := api.RecordListParams{
+		Community: community,
+	}
+	result, err := client.SearchRecords(query, params)
+	if err != nil {
+		return err
+	}
+	rows, err := normalizeCommunities(result.Hits.Hits)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "Records where you are a creator or contributor (ORCID %s)\n", orcid)
+	fmt.Fprintf(os.Stderr, "Showing %d of %d records\n", len(result.Hits.Hits), result.Hits.Total)
+	return output.Format(os.Stdout, rows, appCtx.Output, fields)
+}
+
+// listUploaded lists records the authenticated user uploaded via depositions.
+func listUploaded(client *api.Client, status, fields string) error {
+	if fields == "" {
+		fields = "title,community,links.doi,created"
+	}
+	params := api.RecordListParams{
+		Status: status,
+	}
+	depositions, err := client.ListUserRecords(params)
+	if err != nil {
+		return err
+	}
+	rows, err := normalizeCommunities(depositions)
+	if err != nil {
+		return err
+	}
+	orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
+	if orcid == "" || orcid == "<nil>" {
+		fmt.Fprintf(os.Stderr, "Records uploaded by your account (to see all records you authored or contributed to: zenodo config set orcid <your-orcid>)\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "Records uploaded by your account\n")
+	}
+	fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
+	return output.Format(os.Stdout, rows, appCtx.Output, fields)
+}
+
+// orcidQuery returns an Elasticsearch query that matches records where the given
+// ORCID appears as either a creator or contributor.
+func orcidQuery(orcid string) string {
+	return fmt.Sprintf("creators.orcid:%s OR contributors.orcid:%s", orcid, orcid)
 }
 
 // normalizeCommunities converts depositions to maps and extracts metadata.communities
@@ -128,25 +189,41 @@ func normalizeCommunities(data interface{}) ([]map[string]interface{}, error) {
 		return nil, err
 	}
 	for _, row := range rows {
-		if mc, ok := row["metadata"]; ok {
-			if meta, ok := mc.(map[string]interface{}); ok {
-				if communities, ok := meta["communities"]; ok {
-					if arr, ok := communities.([]interface{}); ok {
-						var slugs []string
-						for _, item := range arr {
-							if m, ok := item.(map[string]interface{}); ok {
-								if id, ok := m["identifier"]; ok {
-									slugs = append(slugs, fmt.Sprintf("%v", id))
-								}
-							}
-						}
-						row["community"] = strings.Join(slugs, ", ")
-					}
-				}
+		row["community"] = extractCommunities(row)
+	}
+	return rows, nil
+}
+
+// extractCommunities pulls community slugs from metadata.communities,
+// handling both "identifier" (depositions) and "id" (records) keys.
+func extractCommunities(row map[string]interface{}) string {
+	mc, ok := row["metadata"]
+	if !ok {
+		return ""
+	}
+	meta, ok := mc.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	communities, ok := meta["communities"]
+	if !ok {
+		return ""
+	}
+	arr, ok := communities.([]interface{})
+	if !ok {
+		return ""
+	}
+	var slugs []string
+	for _, item := range arr {
+		if m, ok := item.(map[string]interface{}); ok {
+			if id, ok := m["identifier"]; ok && fmt.Sprintf("%v", id) != "" {
+				slugs = append(slugs, fmt.Sprintf("%v", id))
+			} else if id, ok := m["id"]; ok && fmt.Sprintf("%v", id) != "" {
+				slugs = append(slugs, fmt.Sprintf("%v", id))
 			}
 		}
 	}
-	return rows, nil
+	return strings.Join(slugs, ", ")
 }
 
 // injectCommunity converts records to maps and adds a top-level "community" field.
@@ -187,7 +264,7 @@ Examples:
 
 		searchFields := appCtx.Fields
 		if searchFields == "" {
-			searchFields = "id,title,doi,stats.version_views,stats.version_downloads,created"
+			searchFields = "id,title,links.doi,stats.version_views,stats.version_downloads,created"
 		}
 
 		if all {
@@ -277,7 +354,7 @@ Examples:
 		}
 		fields := appCtx.Fields
 		if fields == "" {
-			fields = "id,title,doi,stats.version_views,stats.version_downloads,created"
+			fields = "id,title,links.doi,stats.version_views,stats.version_downloads,created"
 		}
 		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
 	},
@@ -288,6 +365,9 @@ func init() {
 	recordsListCmd.Flags().String("status", "", "Filter by status: draft, published")
 	recordsListCmd.Flags().String("community", "", "Community slug (omit value to aggregate across your communities)")
 	recordsListCmd.Flags().Lookup("community").NoOptDefVal = "*"
+	recordsListCmd.Flags().Bool("authored", false, "List records where you are a creator or contributor (by ORCID)")
+	recordsListCmd.Flags().Bool("uploaded", false, "List records uploaded by your account")
+
 
 	// records search flags
 	recordsSearchCmd.Flags().String("community", "", "Filter by community ID")

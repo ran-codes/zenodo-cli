@@ -107,9 +107,19 @@ type RelatedIdentifier struct {
 	Scheme     string `json:"scheme,omitempty"`
 }
 
-// CommunityRef is a reference to a community by identifier.
+// CommunityRef is a reference to a community.
+// The API returns "identifier" (depositions) or "id" (records).
 type CommunityRef struct {
 	Identifier string `json:"identifier"`
+	ID         string `json:"id"`
+}
+
+// Slug returns the community identifier, preferring "identifier" over "id".
+func (c CommunityRef) Slug() string {
+	if c.Identifier != "" {
+		return c.Identifier
+	}
+	return c.ID
 }
 
 // Grant represents a funding grant.

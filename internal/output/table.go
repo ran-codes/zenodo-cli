@@ -33,19 +33,22 @@ func formatTable(w io.Writer, data interface{}, fields string) error {
 		stringRows[i] = record
 	}
 
-	// Truncate the "title" column dynamically based on terminal width.
-	titleIdx := -1
+	// Truncate wide columns dynamically based on terminal width.
+	// Columns marked as truncatable share the available space.
+	truncatable := map[string]bool{"title": true, "links.doi": true}
+	var truncIdxs []int
 	for i, c := range cols {
-		if strings.EqualFold(c, "title") {
-			titleIdx = i
-			break
+		if truncatable[strings.ToLower(c)] {
+			truncIdxs = append(truncIdxs, i)
 		}
 	}
-	if titleIdx >= 0 {
-		maxTitle := titleMaxWidth(stringRows, cols, titleIdx)
-		if maxTitle > 0 {
+	if len(truncIdxs) > 0 {
+		maxWidth := truncatableMaxWidth(stringRows, cols, truncIdxs)
+		if maxWidth > 0 {
 			for _, record := range stringRows {
-				record[titleIdx] = truncate(record[titleIdx], maxTitle)
+				for _, idx := range truncIdxs {
+					record[idx] = truncate(record[idx], maxWidth)
+				}
 			}
 		}
 	}
@@ -53,7 +56,7 @@ func formatTable(w io.Writer, data interface{}, fields string) error {
 	table := tablewriter.NewWriter(w)
 	headers := make([]string, len(cols))
 	for i, c := range cols {
-		headers[i] = strings.ToUpper(c)
+		headers[i] = columnHeader(c)
 	}
 	table.SetHeader(headers)
 	table.SetBorder(false)
@@ -76,18 +79,39 @@ func terminalWidth() int {
 	return width
 }
 
-// titleMaxWidth calculates the available width for the title column
-// by subtracting the width of all other columns from the terminal width.
-func titleMaxWidth(rows [][]string, cols []string, titleIdx int) int {
+// columnAliases maps field names to shorter display headers.
+var columnAliases = map[string]string{
+	"links.doi":              "DOI",
+	"stats.version_views":    "VIEWS",
+	"stats.version_downloads": "DOWNLOADS",
+}
+
+// columnHeader returns the display header for a column.
+func columnHeader(col string) string {
+	if alias, ok := columnAliases[strings.ToLower(col)]; ok {
+		return alias
+	}
+	return strings.ToUpper(col)
+}
+
+// truncatableMaxWidth calculates the available width per truncatable column
+// by subtracting fixed columns from the terminal width, then splitting
+// the remaining space evenly among truncatable columns.
+func truncatableMaxWidth(rows [][]string, cols []string, truncIdxs []int) int {
 	tw := terminalWidth()
 
-	// Calculate max width of each non-title column.
+	truncSet := make(map[int]bool)
+	for _, idx := range truncIdxs {
+		truncSet[idx] = true
+	}
+
+	// Calculate max width of each fixed column.
 	otherWidth := 0
 	for i := range cols {
-		if i == titleIdx {
+		if truncSet[i] {
 			continue
 		}
-		maxW := len(cols[i]) // header width
+		maxW := len(columnHeader(cols[i])) // header width
 		for _, row := range rows {
 			if len(row[i]) > maxW {
 				maxW = len(row[i])
@@ -102,10 +126,13 @@ func titleMaxWidth(rows [][]string, cols []string, titleIdx int) int {
 	padding := len(cols) * 2
 	available := tw - otherWidth - separators - padding
 
-	if available < 20 {
-		return 20 // minimum title width
+	// Split available space among truncatable columns.
+	perCol := available / len(truncIdxs)
+
+	if perCol < 20 {
+		return 20 // minimum width per column
 	}
-	return available
+	return perCol
 }
 
 // truncate shortens a string to maxLen runes, adding "..." if truncated.
