@@ -161,7 +161,7 @@ func listUploaded(client *api.Client, status, fields string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "Records uploaded by your account\n")
+	fmt.Fprintf(os.Stderr, "Records uploaded by your account (to see all records you authored or contributed to: zenodo config set orcid <your-orcid>)\n")
 	fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
 	return output.Format(os.Stdout, rows, appCtx.Output, fields)
 }
