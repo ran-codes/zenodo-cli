@@ -37,8 +37,33 @@ Examples:
 		status, _ := cmd.Flags().GetString("status")
 		community, _ := cmd.Flags().GetString("community")
 		communityUsed := cmd.Flags().Changed("community")
+		authored, _ := cmd.Flags().GetBool("authored")
 
 		fields := appCtx.Fields
+
+		// --authored: search by ORCID
+		if authored {
+			if status == "draft" {
+				return fmt.Errorf("--authored cannot be used with --status draft (drafts are not available via the search API)")
+			}
+			orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
+			if orcid == "" || orcid == "<nil>" {
+				return fmt.Errorf("ORCID not configured. Run: zenodo config set orcid <your-orcid>")
+			}
+			if fields == "" {
+				fields = "title,community,doi,stats.version_views,stats.version_downloads,created"
+			}
+			query := fmt.Sprintf("creators.orcid:%s", orcid)
+			params := api.RecordListParams{
+				Community: community,
+			}
+			result, err := client.SearchRecords(query, params)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stderr, "Showing %d of %d authored records\n", len(result.Hits.Hits), result.Hits.Total)
+			return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
+		}
 
 		// --community=<slug>: all records in that community
 		if communityUsed && community != "" && community != "*" {
@@ -288,6 +313,8 @@ func init() {
 	recordsListCmd.Flags().String("status", "", "Filter by status: draft, published")
 	recordsListCmd.Flags().String("community", "", "Community slug (omit value to aggregate across your communities)")
 	recordsListCmd.Flags().Lookup("community").NoOptDefVal = "*"
+	recordsListCmd.Flags().Bool("authored", false, "List records where you are a creator (by ORCID)")
+
 
 	// records search flags
 	recordsSearchCmd.Flags().String("community", "", "Filter by community ID")
