@@ -6,7 +6,8 @@ before:
     - go generate ./...
 
 builds:
-  - main: ./cmd/zenodo
+  - id: zenodo
+    main: ./cmd/zenodo
     binary: zenodo
     env:
       - CGO_ENABLED=0
@@ -22,6 +23,21 @@ builds:
       - -X github.com/ran-codes/zenodo-cli/internal/cli.version={{.Version}}
       - -X github.com/ran-codes/zenodo-cli/internal/cli.commit={{.Commit}}
       - -X github.com/ran-codes/zenodo-cli/internal/cli.date={{.Date}}
+
+  - id: zenodo-mcp
+    main: ./cmd/zenodo-mcp
+    binary: zenodo-mcp
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
 
 archives:
   - format: tar.gz
