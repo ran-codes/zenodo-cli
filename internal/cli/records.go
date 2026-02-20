@@ -61,8 +61,12 @@ Examples:
 			if err != nil {
 				return err
 			}
+			rows, err := normalizeCommunities(result.Hits.Hits)
+			if err != nil {
+				return err
+			}
 			fmt.Fprintf(os.Stderr, "Showing %d of %d authored records\n", len(result.Hits.Hits), result.Hits.Total)
-			return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
+			return output.Format(os.Stdout, rows, appCtx.Output, fields)
 		}
 
 		// --community=<slug>: all records in that community
@@ -134,9 +138,13 @@ Examples:
 			if err != nil {
 				return err
 			}
+			rows, err := normalizeCommunities(result.Hits.Hits)
+			if err != nil {
+				return err
+			}
 			fmt.Fprintf(os.Stderr, "Listing records for ORCID %s\n", orcid)
 			fmt.Fprintf(os.Stderr, "Showing %d of %d authored records\n", len(result.Hits.Hits), result.Hits.Total)
-			return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
+			return output.Format(os.Stdout, rows, appCtx.Output, fields)
 		}
 
 		// No ORCID: fall back to self-uploaded records
@@ -178,25 +186,41 @@ func normalizeCommunities(data interface{}) ([]map[string]interface{}, error) {
 		return nil, err
 	}
 	for _, row := range rows {
-		if mc, ok := row["metadata"]; ok {
-			if meta, ok := mc.(map[string]interface{}); ok {
-				if communities, ok := meta["communities"]; ok {
-					if arr, ok := communities.([]interface{}); ok {
-						var slugs []string
-						for _, item := range arr {
-							if m, ok := item.(map[string]interface{}); ok {
-								if id, ok := m["identifier"]; ok {
-									slugs = append(slugs, fmt.Sprintf("%v", id))
-								}
-							}
-						}
-						row["community"] = strings.Join(slugs, ", ")
-					}
-				}
+		row["community"] = extractCommunities(row)
+	}
+	return rows, nil
+}
+
+// extractCommunities pulls community slugs from metadata.communities,
+// handling both "identifier" (depositions) and "id" (records) keys.
+func extractCommunities(row map[string]interface{}) string {
+	mc, ok := row["metadata"]
+	if !ok {
+		return ""
+	}
+	meta, ok := mc.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	communities, ok := meta["communities"]
+	if !ok {
+		return ""
+	}
+	arr, ok := communities.([]interface{})
+	if !ok {
+		return ""
+	}
+	var slugs []string
+	for _, item := range arr {
+		if m, ok := item.(map[string]interface{}); ok {
+			if id, ok := m["identifier"]; ok && fmt.Sprintf("%v", id) != "" {
+				slugs = append(slugs, fmt.Sprintf("%v", id))
+			} else if id, ok := m["id"]; ok && fmt.Sprintf("%v", id) != "" {
+				slugs = append(slugs, fmt.Sprintf("%v", id))
 			}
 		}
 	}
-	return rows, nil
+	return strings.Join(slugs, ", ")
 }
 
 // injectCommunity converts records to maps and adds a top-level "community" field.
