@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/ran-codes/zenodo-cli/internal/cli"
@@ -10,11 +11,12 @@ import (
 )
 
 func main() {
-	if err := cli.Execute(); err != nil {
+	err, outputFmt := cli.Execute()
+	if err != nil {
 		code := exitCode(err)
 
-		// If output is json mode, emit structured error to stderr.
-		if isJSONOutput() {
+		if outputFmt == "json" {
+			// Structured JSON error to stderr.
 			errObj := map[string]interface{}{
 				"error": err.Error(),
 				"code":  code,
@@ -28,6 +30,9 @@ func main() {
 				}
 			}
 			json.NewEncoder(os.Stderr).Encode(errObj)
+		} else {
+			// Plain text error to stderr.
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
 
 		os.Exit(code)
@@ -40,6 +45,8 @@ func exitCode(err error) int {
 		switch {
 		case apiErr.Status == 401 || apiErr.Status == 403:
 			return 2 // Auth error
+		case apiErr.LikelyAuthError():
+			return 2 // Auth error (Zenodo returns 400 for bad tokens on some endpoints)
 		case apiErr.Status == 429:
 			return 4 // Rate limit
 		default:
@@ -53,22 +60,4 @@ func exitCode(err error) int {
 	}
 
 	return 1
-}
-
-func isJSONOutput() bool {
-	for _, arg := range os.Args {
-		if arg == "--output" || arg == "-o" {
-			return false // Next arg would be the value, check below
-		}
-		if arg == "--output=json" || arg == "-o=json" {
-			return true
-		}
-	}
-	// Check for -o json or --output json pattern.
-	for i, arg := range os.Args {
-		if (arg == "--output" || arg == "-o") && i+1 < len(os.Args) && os.Args[i+1] == "json" {
-			return true
-		}
-	}
-	return false
 }
