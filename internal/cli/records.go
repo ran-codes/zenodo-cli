@@ -53,7 +53,7 @@ Examples:
 			if fields == "" {
 				fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
 			}
-			query := fmt.Sprintf("creators.orcid:%s", orcid)
+			query := orcidQuery(orcid)
 			params := api.RecordListParams{
 				Community: community,
 			}
@@ -128,7 +128,7 @@ Examples:
 			if fields == "" {
 				fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
 			}
-			query := fmt.Sprintf("creators.orcid:%s", orcid)
+			query := orcidQuery(orcid)
 			params := api.RecordListParams{}
 			result, err := client.SearchRecords(query, params)
 			if err != nil {
@@ -158,6 +158,12 @@ Examples:
 		fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
 		return output.Format(os.Stdout, rows, appCtx.Output, fields)
 	},
+}
+
+// orcidQuery returns an Elasticsearch query that matches records where the given
+// ORCID appears as either a creator or contributor.
+func orcidQuery(orcid string) string {
+	return fmt.Sprintf("creators.orcid:%s OR contributors.orcid:%s", orcid, orcid)
 }
 
 // normalizeCommunities converts depositions to maps and extracts metadata.communities
