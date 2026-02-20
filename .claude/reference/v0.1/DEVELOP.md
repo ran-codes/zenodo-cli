@@ -67,7 +67,7 @@ internal/
     records.go              records list/search/get/versions commands
     communities.go          communities list command
     licenses.go             licenses search command
-    access.go               access links list command
+    access.go               access links list command (disabled v0.1)
     deposit.go              deposit edit/update/discard/publish commands
     completion.go           Shell completion generation
     version.go              Version command (ldflags-injected)
@@ -77,7 +77,7 @@ internal/
     records.go              Records API methods
     communities.go          Communities API methods
     licenses.go             Licenses API methods
-    access.go               Access links API methods
+    access.go               Access links API methods (disabled v0.1)
     depositions.go          Depositions API methods (edit/update/publish/discard)
   config/
     config.go               Viper-backed config with profiles
@@ -87,7 +87,7 @@ internal/
     record.go               Record, Deposition, Metadata structs
     community.go            Community structs
     license.go              License structs
-    access.go               Access link structs
+    access.go               Access link structs (unused v0.1)
     stats.go                Stats struct
     error.go                APIError with hints
   output/

@@ -77,12 +77,12 @@ A Go CLI tool that wraps the Zenodo REST API for metadata management, asset inve
 | FR-4.1 | `communities list [query]` — search/list communities |
 | FR-4.2 | Support `--output json|table|csv` |
 
-### FR-5: Access Links
+### ~~FR-5: Access Links~~ *(disabled in v0.1 — read-only release)*
 
 | ID | Requirement |
 |----|-------------|
-| FR-5.1 | `access links list <id>` — list share links for a record |
-| FR-5.2 | Support `--output json|table|csv` |
+| ~~FR-5.1~~ | ~~`access links list <id>` — list share links for a record~~ |
+| ~~FR-5.2~~ | ~~Support `--output json|table|csv`~~ |
 
 ### FR-6: Licenses
 

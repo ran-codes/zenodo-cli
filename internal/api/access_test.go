@@ -1,5 +1,8 @@
 package api
 
+// v0.1: Access links tests disabled — read-only release.
+
+/*
 import (
 	"encoding/json"
 	"net/http"
@@ -35,3 +38,4 @@ func TestListAccessLinks(t *testing.T) {
 		t.Errorf("id = %q", links[0].ID)
 	}
 }
+*/

@@ -1,5 +1,9 @@
 package cli
 
+// v0.1: Access links commands disabled — read-only release.
+// They will be re-enabled in a future version.
+
+/*
 import (
 	"fmt"
 	"os"
@@ -49,3 +53,4 @@ func init() {
 	accessCmd.AddCommand(accessLinksCmd)
 	rootCmd.AddCommand(accessCmd)
 }
+*/
