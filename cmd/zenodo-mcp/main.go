@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,6 +13,9 @@ import (
 	"github.com/ran-codes/zenodo-cli/internal/api"
 	"github.com/ran-codes/zenodo-cli/internal/config"
 )
+
+//go:embed instructions.md
+var baseInstructions string
 
 func main() {
 	// Load config and resolve token using the same chain as the CLI.
@@ -33,8 +37,13 @@ func main() {
 
 	client := api.NewClient(baseURL, token)
 
+	// Build server instructions with user context.
+	instructions := buildInstructions(cfg)
+
 	// Create MCP server.
-	s := server.NewMCPServer("zenodo", "0.1.0")
+	s := server.NewMCPServer("zenodo", "0.1.0",
+		server.WithInstructions(instructions),
+	)
 
 	// Register tools.
 	s.AddTool(recordsListTool(), recordsListHandler(client))
@@ -49,6 +58,19 @@ func main() {
 	if err := stdio.Listen(context.Background(), os.Stdin, os.Stdout); err != nil {
 		log.Fatalf("mcp server error: %v", err)
 	}
+}
+
+// buildInstructions combines the embedded markdown instructions with dynamic user context.
+func buildInstructions(cfg *config.Config) string {
+	instructions := baseInstructions
+
+	// Append user's ORCID if configured.
+	orcid := fmt.Sprintf("%v", cfg.Get("orcid"))
+	if orcid != "" && orcid != "<nil>" {
+		instructions += fmt.Sprintf("\n## User context\n\n- The authenticated user's ORCID is: %s\n- When asked about \"my records\" or similar, search both creators.orcid and contributors.orcid with this ORCID.\n", orcid)
+	}
+
+	return instructions
 }
 
 // jsonResult marshals v to JSON and returns it as an MCP text result.
