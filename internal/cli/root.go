@@ -118,11 +118,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose logging")
 }
 
-// Execute runs the root command.
-func Execute() error {
+// Execute runs the root command. Returns the error and resolved output format.
+// The caller (main) is responsible for formatting the error.
+func Execute() (error, string) {
+	// Run PersistentPreRunE first via cobra, then return output format.
 	err := rootCmd.Execute()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-	}
-	return err
+	return err, appCtx.Output
 }

@@ -26,6 +26,11 @@ func (e *APIError) Error() string {
 // Hint returns a user-friendly suggestion based on the status code.
 func (e *APIError) Hint() string {
 	switch e.Status {
+	case 400:
+		if e.LikelyAuthError() {
+			return "This may be caused by an invalid API token. Check your token with: zenodo config set token <TOKEN>"
+		}
+		return ""
 	case 401:
 		return "Check that your token is valid. Set it with: zenodo config set token <TOKEN>"
 	case 403:
@@ -37,4 +42,21 @@ func (e *APIError) Hint() string {
 	default:
 		return ""
 	}
+}
+
+// LikelyAuthError returns true if a 400 response looks like it was caused by
+// an invalid token. Zenodo returns 400 (not 401) on some authenticated endpoints
+// when the token is malformed.
+func (e *APIError) LikelyAuthError() bool {
+	if e.Status != 400 {
+		return false
+	}
+	// Zenodo returns a "validation error" with empty field messages when the
+	// token is invalid on /deposit/depositions endpoints.
+	for _, d := range e.Errors {
+		if d.Field != "" && d.Message == "" {
+			return true
+		}
+	}
+	return false
 }
