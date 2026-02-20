@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/ran-codes/zenodo-cli/internal/api"
 	"github.com/ran-codes/zenodo-cli/internal/model"
@@ -42,7 +43,7 @@ Examples:
 		// --community=<slug>: all records in that community
 		if communityUsed && community != "" && community != "*" {
 			if fields == "" {
-				fields = "community,title,doi,created"
+				fields = "community,title,doi,stats.version_views,stats.version_downloads,created"
 			}
 			params := api.RecordListParams{
 				Status:    status,
@@ -63,7 +64,7 @@ Examples:
 		// --community (no value): aggregate across user's communities
 		if communityUsed && (community == "" || community == "*") {
 			if fields == "" {
-				fields = "community,title,doi,created"
+				fields = "community,title,doi,stats.version_views,stats.version_downloads,created"
 			}
 			communities, err := client.ListUserCommunities("", 0, 0)
 			if err != nil {
@@ -96,7 +97,7 @@ Examples:
 
 		// Default: user's own records
 		if fields == "" {
-			fields = "title,metadata.communities,doi_url,created"
+			fields = "title,community,doi,created"
 		}
 		params := api.RecordListParams{
 			Status:    status,
@@ -105,9 +106,47 @@ Examples:
 		if err != nil {
 			return err
 		}
+		// Normalize community field: extract identifiers from metadata.communities
+		rows, err := normalizeCommunities(depositions)
+		if err != nil {
+			return err
+		}
 		fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
-		return output.Format(os.Stdout, depositions, appCtx.Output, fields)
+		return output.Format(os.Stdout, rows, appCtx.Output, fields)
 	},
+}
+
+// normalizeCommunities converts depositions to maps and extracts metadata.communities
+// into a top-level "community" field as a comma-separated string of identifiers.
+func normalizeCommunities(data interface{}) ([]map[string]interface{}, error) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	var rows []map[string]interface{}
+	if err := json.Unmarshal(b, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if mc, ok := row["metadata"]; ok {
+			if meta, ok := mc.(map[string]interface{}); ok {
+				if communities, ok := meta["communities"]; ok {
+					if arr, ok := communities.([]interface{}); ok {
+						var slugs []string
+						for _, item := range arr {
+							if m, ok := item.(map[string]interface{}); ok {
+								if id, ok := m["identifier"]; ok {
+									slugs = append(slugs, fmt.Sprintf("%v", id))
+								}
+							}
+						}
+						row["community"] = strings.Join(slugs, ", ")
+					}
+				}
+			}
+		}
+	}
+	return rows, nil
 }
 
 // injectCommunity converts records to maps and adds a top-level "community" field.
@@ -148,7 +187,7 @@ Examples:
 
 		searchFields := appCtx.Fields
 		if searchFields == "" {
-			searchFields = "id,title,doi,links.html,created"
+			searchFields = "id,title,doi,stats.version_views,stats.version_downloads,created"
 		}
 
 		if all {
@@ -238,7 +277,7 @@ Examples:
 		}
 		fields := appCtx.Fields
 		if fields == "" {
-			fields = "id,title,doi,links.html,created"
+			fields = "id,title,doi,stats.version_views,stats.version_downloads,created"
 		}
 		return output.Format(os.Stdout, result.Hits.Hits, appCtx.Output, fields)
 	},

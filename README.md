@@ -44,6 +44,10 @@ zenodo communities list "ecology"
 zenodo licenses search "creative commons"
 ```
 
+### Community records with usage stats
+
+![records list --community](docs/images/snip-records-list-community.png)
+
 ### Output formats
 
 Every command supports `--output json|table|csv` and `--fields` for column selection:
