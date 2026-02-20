@@ -164,14 +164,25 @@ func completionConfig(shell string) (string, string, error) {
 		return "", "", fmt.Errorf("finding home directory: %w", err)
 	}
 
+	// Resolve the absolute path to the current executable so the source line
+	// works both during local development (./zenodo.exe) and after install (zenodo on PATH).
+	exe, err := os.Executable()
+	if err != nil {
+		return "", "", fmt.Errorf("finding executable path: %w", err)
+	}
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return "", "", fmt.Errorf("resolving executable path: %w", err)
+	}
+
 	switch shell {
 	case "bash":
 		return filepath.Join(home, ".bashrc"),
-			`eval "$(zenodo completion bash)"`,
+			fmt.Sprintf(`eval "$(%s completion bash)"`, exe),
 			nil
 	case "zsh":
 		return filepath.Join(home, ".zshrc"),
-			`eval "$(zenodo completion zsh)"`,
+			fmt.Sprintf(`eval "$(%s completion zsh)"`, exe),
 			nil
 	case "fish":
 		return filepath.Join(home, ".config", "fish", "completions", "zenodo.fish"),
@@ -183,7 +194,7 @@ func completionConfig(shell string) (string, string, error) {
 			return "", "", fmt.Errorf("could not determine PowerShell profile path; is pwsh or powershell installed?")
 		}
 		return profile,
-			"zenodo completion powershell | Out-String | Invoke-Expression",
+			fmt.Sprintf(`& "%s" completion powershell | Out-String | Invoke-Expression`, exe),
 			nil
 	default:
 		return "", "", fmt.Errorf("unsupported shell: %s (supported: bash, zsh, fish, powershell)", shell)
