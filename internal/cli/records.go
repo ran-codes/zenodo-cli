@@ -38,35 +38,18 @@ Examples:
 		community, _ := cmd.Flags().GetString("community")
 		communityUsed := cmd.Flags().Changed("community")
 		authored, _ := cmd.Flags().GetBool("authored")
+		uploaded, _ := cmd.Flags().GetBool("uploaded")
 
 		fields := appCtx.Fields
 
-		// --authored: search by ORCID
+		// --authored: search by ORCID (created or contributed)
 		if authored {
-			if status == "draft" {
-				return fmt.Errorf("--authored cannot be used with --status draft (drafts are not available via the search API)")
-			}
-			orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
-			if orcid == "" || orcid == "<nil>" {
-				return fmt.Errorf("ORCID not configured. Run: zenodo config set orcid <your-orcid>")
-			}
-			if fields == "" {
-				fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
-			}
-			query := orcidQuery(orcid)
-			params := api.RecordListParams{
-				Community: community,
-			}
-			result, err := client.SearchRecords(query, params)
-			if err != nil {
-				return err
-			}
-			rows, err := normalizeCommunities(result.Hits.Hits)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(os.Stderr, "Showing %d of %d authored records\n", len(result.Hits.Hits), result.Hits.Total)
-			return output.Format(os.Stdout, rows, appCtx.Output, fields)
+			return listAuthored(client, cmd, status, community, fields)
+		}
+
+		// --uploaded: explicitly list self-uploaded records
+		if uploaded {
+			return listUploaded(client, status, fields)
 		}
 
 		// --community=<slug>: all records in that community
@@ -126,46 +109,61 @@ Examples:
 
 		// Default: if ORCID is configured, search by ORCID; otherwise list uploads
 		orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
-		hasOrcid := orcid != "" && orcid != "<nil>"
-
-		if hasOrcid {
-			if fields == "" {
-				fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
-			}
-			query := orcidQuery(orcid)
-			params := api.RecordListParams{}
-			result, err := client.SearchRecords(query, params)
-			if err != nil {
-				return err
-			}
-			rows, err := normalizeCommunities(result.Hits.Hits)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(os.Stderr, "Listing records for ORCID %s\n", orcid)
-			fmt.Fprintf(os.Stderr, "Showing %d of %d authored records\n", len(result.Hits.Hits), result.Hits.Total)
-			return output.Format(os.Stdout, rows, appCtx.Output, fields)
+		if orcid != "" && orcid != "<nil>" {
+			return listAuthored(client, cmd, "", "", fields)
 		}
-
-		// No ORCID: fall back to self-uploaded records
-		if fields == "" {
-			fields = "title,community,links.doi,created"
-		}
-		params := api.RecordListParams{
-			Status: status,
-		}
-		depositions, err := client.ListUserRecords(params)
-		if err != nil {
-			return err
-		}
-		rows, err := normalizeCommunities(depositions)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(os.Stderr, "Listing self-uploaded records (to list authored records: zenodo config set orcid <your-orcid>)\n")
-		fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
-		return output.Format(os.Stdout, rows, appCtx.Output, fields)
+		return listUploaded(client, status, fields)
 	},
+}
+
+// listAuthored searches for records where the user's ORCID appears as creator or contributor.
+func listAuthored(client *api.Client, cmd *cobra.Command, status, community, fields string) error {
+	if status == "draft" {
+		return fmt.Errorf("--authored cannot be used with --status draft (drafts are not available via the search API)")
+	}
+	orcid := fmt.Sprintf("%v", appCtx.Config.Get("orcid"))
+	if orcid == "" || orcid == "<nil>" {
+		return fmt.Errorf("ORCID not configured. Run: zenodo config set orcid <your-orcid>")
+	}
+	if fields == "" {
+		fields = "title,community,links.doi,stats.version_views,stats.version_downloads,created"
+	}
+	query := orcidQuery(orcid)
+	params := api.RecordListParams{
+		Community: community,
+	}
+	result, err := client.SearchRecords(query, params)
+	if err != nil {
+		return err
+	}
+	rows, err := normalizeCommunities(result.Hits.Hits)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "Records where you are a creator or contributor (ORCID %s)\n", orcid)
+	fmt.Fprintf(os.Stderr, "Showing %d of %d records\n", len(result.Hits.Hits), result.Hits.Total)
+	return output.Format(os.Stdout, rows, appCtx.Output, fields)
+}
+
+// listUploaded lists records the authenticated user uploaded via depositions.
+func listUploaded(client *api.Client, status, fields string) error {
+	if fields == "" {
+		fields = "title,community,links.doi,created"
+	}
+	params := api.RecordListParams{
+		Status: status,
+	}
+	depositions, err := client.ListUserRecords(params)
+	if err != nil {
+		return err
+	}
+	rows, err := normalizeCommunities(depositions)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "Records uploaded by your account\n")
+	fmt.Fprintf(os.Stderr, "Showing %d records\n", len(depositions))
+	return output.Format(os.Stdout, rows, appCtx.Output, fields)
 }
 
 // orcidQuery returns an Elasticsearch query that matches records where the given
@@ -362,7 +360,8 @@ func init() {
 	recordsListCmd.Flags().String("status", "", "Filter by status: draft, published")
 	recordsListCmd.Flags().String("community", "", "Community slug (omit value to aggregate across your communities)")
 	recordsListCmd.Flags().Lookup("community").NoOptDefVal = "*"
-	recordsListCmd.Flags().Bool("authored", false, "List records where you are a creator (by ORCID)")
+	recordsListCmd.Flags().Bool("authored", false, "List records where you are a creator or contributor (by ORCID)")
+	recordsListCmd.Flags().Bool("uploaded", false, "List records uploaded by your account")
 
 
 	// records search flags
