@@ -6,6 +6,7 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // Format writes data in the specified format to the writer.
@@ -125,6 +126,15 @@ func detectColumns(rows []map[string]interface{}, fields []string) []string {
 func stringify(v interface{}) string {
 	if v == nil {
 		return ""
+	}
+	// Format ISO timestamps as YYYY-MM-DD.
+	if s, ok := v.(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+			return t.Format("2006-01-02")
+		}
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			return t.Format("2006-01-02")
+		}
 	}
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
