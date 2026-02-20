@@ -164,25 +164,14 @@ func completionConfig(shell string) (string, string, error) {
 		return "", "", fmt.Errorf("finding home directory: %w", err)
 	}
 
-	// Use the absolute path to the current executable so the source line
-	// works regardless of working directory or PATH.
-	exe, err := os.Executable()
-	if err != nil {
-		return "", "", fmt.Errorf("finding executable path: %w", err)
-	}
-	exe, err = filepath.EvalSymlinks(exe)
-	if err != nil {
-		return "", "", fmt.Errorf("resolving executable path: %w", err)
-	}
-
 	switch shell {
 	case "bash":
 		return filepath.Join(home, ".bashrc"),
-			fmt.Sprintf(`eval "$(%s completion bash)"`, exe),
+			`eval "$(zenodo completion bash)"`,
 			nil
 	case "zsh":
 		return filepath.Join(home, ".zshrc"),
-			fmt.Sprintf(`eval "$(%s completion zsh)"`, exe),
+			`eval "$(zenodo completion zsh)"`,
 			nil
 	case "fish":
 		return filepath.Join(home, ".config", "fish", "completions", "zenodo.fish"),
@@ -193,9 +182,8 @@ func completionConfig(shell string) (string, string, error) {
 		if profile == "" {
 			return "", "", fmt.Errorf("could not determine PowerShell profile path; is pwsh or powershell installed?")
 		}
-		// Use & operator with quoted path for PowerShell compatibility.
 		return profile,
-			fmt.Sprintf(`& "%s" completion powershell | Out-String | Invoke-Expression`, exe),
+			"zenodo completion powershell | Out-String | Invoke-Expression",
 			nil
 	default:
 		return "", "", fmt.Errorf("unsupported shell: %s (supported: bash, zsh, fish, powershell)", shell)
