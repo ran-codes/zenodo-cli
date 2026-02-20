@@ -30,7 +30,7 @@ zenodo-cli/
 │   │   ├── deposit.go              # deposit edit/update/discard/publish commands
 │   │   ├── communities.go          # communities list command
 │   │   ├── licenses.go             # licenses search command
-│   │   └── access.go               # access links list command
+│   │   └── access.go               # access links list command (disabled v0.1)
 │   ├── api/
 │   │   ├── client.go               # HTTP client with auth, rate limiting, base URL
 │   │   ├── ratelimit.go            # Rate limiter (token bucket + header parsing)
@@ -38,7 +38,7 @@ zenodo-cli/
 │   │   ├── depositions.go          # Depositions API methods
 │   │   ├── communities.go          # Communities API methods
 │   │   ├── licenses.go             # Licenses API methods
-│   │   └── access.go               # Access links API methods
+│   │   └── access.go               # Access links API methods (disabled v0.1)
 │   ├── config/
 │   │   ├── config.go               # Config loading (viper), profile management
 │   │   ├── keyring.go              # Keyring get/set/delete/migrate
@@ -110,7 +110,7 @@ zenodo-cli/
    - `api/records.go` — `ListUserRecords()`, `SearchRecords()`, `GetRecord()`, `ListVersions()`
    - `api/communities.go` — `SearchCommunities()`
    - `api/licenses.go` — `SearchLicenses()`
-   - `api/access.go` — `ListAccessLinks()`
+   - ~~`api/access.go` — `ListAccessLinks()`~~ *(disabled v0.1)*
 5. Implement CLI commands:
    - `records list` (with `--status`, `--community`, `--all` pagination)
    - `records search <query>` (with `--community`, `--all`)
@@ -118,7 +118,7 @@ zenodo-cli/
    - `records versions <id>`
    - `communities list [query]`
    - `licenses search [query]`
-   - `access links list <id>`
+   - ~~`access links list <id>`~~ *(disabled v0.1)*
 6. Implement `--all` auto-pagination:
    - Loop through pages until exhausted or 10k ceiling
    - Rate-limit-aware delays between pages

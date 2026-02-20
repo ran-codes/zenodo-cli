@@ -1,5 +1,9 @@
 package api
 
+// v0.1: Access links methods disabled — read-only release.
+// They will be re-enabled in a future version.
+
+/*
 import (
 	"fmt"
 
@@ -14,3 +18,4 @@ func (c *Client) ListAccessLinks(recordID int) ([]model.AccessLink, error) {
 	}
 	return result.Hits.Hits, nil
 }
+*/
