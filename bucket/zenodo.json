@@ -6,8 +6,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/ran-codes/zenodo-cli/releases/download/v0.0.0/zenodo_0.0.0_windows_amd64.zip",
-      "hash": "",
-      "extract_dir": ""
+      "hash": ""
     }
   },
   "bin": "zenodo.exe",
