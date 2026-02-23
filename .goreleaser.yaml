@@ -43,6 +43,7 @@ builds:
 
 archives:
   - format: binary
+    name_template: "{{ .Binary }}"
 
 checksum:
   name_template: "checksums.txt"
