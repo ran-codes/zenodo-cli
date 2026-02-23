@@ -1,13 +1,13 @@
 {
-  "version": "0.0.0",
+  "version": "0.1.0-alpha",
   "description": "CLI tool for managing metadata, searching records, and querying assets on Zenodo.",
   "homepage": "https://github.com/ran-codes/zenodo-cli",
   "license": "MIT",
   "architecture": {
     "64bit": {
       "url": [
-        "https://github.com/ran-codes/zenodo-cli/releases/download/v0.0.0/zenodo-windows-amd64.exe",
-        "https://github.com/ran-codes/zenodo-cli/releases/download/v0.0.0/zenodo-mcp-windows-amd64.exe"
+        "https://github.com/ran-codes/zenodo-cli/releases/download/v0.1.0-alpha/zenodo-windows-amd64.exe",
+        "https://github.com/ran-codes/zenodo-cli/releases/download/v0.1.0-alpha/zenodo-mcp-windows-amd64.exe"
       ],
       "hash": [
         "",
@@ -21,7 +21,10 @@
       "Copy-Item \"$dir\\zenodo-mcp-windows-amd64.exe\" \"$dir\\zenodo-mcp.exe\""
     ]
   },
-  "bin": ["zenodo.exe", "zenodo-mcp.exe"],
+  "bin": [
+    "zenodo.exe",
+    "zenodo-mcp.exe"
+  ],
   "checkver": {
     "github": "https://github.com/ran-codes/zenodo-cli"
   },
