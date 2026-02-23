@@ -30,15 +30,21 @@ jobs:
       - name: Update Scoop manifest
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          SHA256=$(grep "zenodo_${VERSION}_windows_amd64.zip" dist/checksums.txt | awk '{print $1}')
+          SHA256_ZENODO=$(grep 'zenodo-windows-amd64.exe' dist/checksums.txt | awk '{print $1}')
+          SHA256_MCP=$(grep 'zenodo-mcp-windows-amd64.exe' dist/checksums.txt | awk '{print $1}')
 
           jq \
             --arg ver "$VERSION" \
-            --arg hash "$SHA256" \
-            '.version = $ver | .architecture."64bit".url = "https://github.com/ran-codes/zenodo-cli/releases/download/v\($ver)/zenodo_\($ver)_windows_amd64.zip" | .architecture."64bit".hash = $hash' \
-            bucket/zenodo.json > bucket/zenodo.json.tmp
+            --arg hash_zenodo "$SHA256_ZENODO" \
+            --arg hash_mcp "$SHA256_MCP" \
+            '.version = $ver
+            | .architecture."64bit".url[0] = "https://github.com/ran-codes/zenodo-cli/releases/download/v\($ver)/zenodo-windows-amd64.exe"
+            | .architecture."64bit".url[1] = "https://github.com/ran-codes/zenodo-cli/releases/download/v\($ver)/zenodo-mcp-windows-amd64.exe"
+            | .architecture."64bit".hash[0] = $hash_zenodo
+            | .architecture."64bit".hash[1] = $hash_mcp' \
+            bucket/zenodo-cli.json > bucket/zenodo-cli.json.tmp
 
-          mv bucket/zenodo.json.tmp bucket/zenodo.json
+          mv bucket/zenodo-cli.json.tmp bucket/zenodo-cli.json
 
       - name: Commit updated Scoop manifest
         run: |
@@ -46,7 +52,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
-          git add bucket/zenodo.json
+          git add bucket/zenodo-cli.json
           git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "scoop: update manifest to v${GITHUB_REF_NAME#v}"
           git push origin main

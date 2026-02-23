@@ -6,18 +6,24 @@ Wraps the Zenodo REST API for record lookup, community browsing, license search,
 
 ## Install
 
+### Install script (macOS / Linux)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ran-codes/zenodo-cli/main/scripts/install.sh | bash
+```
+
 ### Scoop (Windows)
 
 ```powershell
 ## Install Scoop if you don't have it: https://scoop.sh
 # irm get.scoop.sh | iex
-scoop bucket add zenodo https://github.com/ran-codes/zenodo-cli
-scoop install zenodo
+scoop bucket add zenodo-cli https://github.com/ran-codes/zenodo-cli
+scoop install zenodo-cli
 ```
 
 ### Manual download
 
-Download the binary for your platform from [GitHub Releases](https://github.com/ran-codes/zenodo-cli/releases), rename it to `zenodo` (or `zenodo.exe` on Windows), and add it to your PATH.
+Download the binaries for your platform from [GitHub Releases](https://github.com/ran-codes/zenodo-cli/releases) and add them to your PATH.
 
 ## Usage
 
